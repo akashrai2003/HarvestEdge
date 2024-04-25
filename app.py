@@ -4,6 +4,7 @@ from pymongo import MongoClient
 from flask_bcrypt import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
 from user import User  # Corrected import
+from opencage.geocoder import OpenCageGeocode
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -15,6 +16,9 @@ uri = "mongodb+srv://ankurjvm13:3uCK51zzr8cmyZH6@harvestedge.bzohjrl.mongodb.net
 client = MongoClient(uri)
 db = client['HaE']
 users_collection = db['users']
+
+# Initialize OpenCage Geocoder with your API key
+OCG = OpenCageGeocode('d40a109f63404f039ea657fd17d54f06')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -31,6 +35,13 @@ def login():
         password = request.form['password']
         user_data = users_collection.find_one({'username': username})
         if user_data and check_password_hash(user_data['password'], password):
+            # Retrieve location data based on the user's IP address
+            results = OCG.geocode(request.remote_addr)
+            location_data = results[0]['formatted'] if results else None
+            
+            # Update the user document with the location data
+            users_collection.update_one({'_id': user_data['_id']}, {'$set': {'location': location_data}})
+            
             user_id = user_data['_id']
             user = User(id=str(user_id), username=username, password=password)
             login_user(user)
