@@ -9,6 +9,7 @@
 <body>
     <header class="header">
         <h1 class="logo">HarvestEdge</h1>
+        <div id="location-info" class="location-info"></div> <!-- New div for displaying location info -->
         <button id="theme-toggle" class="theme-toggle">Toggle Theme</button>
         <nav class="nav">
             <ul class="nav-list">
@@ -49,6 +50,20 @@
                 <p>Enhanced farm management capabilities including environmental integration, granular yield prediction, financial management tools, and promoting sustainability.</p>
             </div>
         </section>
+        {% if current_user.is_authenticated %}
+        <section class="location-update">
+            <h2>Update Your Location</h2>
+            <div id="location-error" class="error-message" style="display: none;"></div>
+            <form id="location-update-form" onsubmit="updateLocation(event)">
+                <label for="latitude">Latitude:</label>
+                <input type="text" id="latitude" name="latitude" required>
+                <label for="longitude">Longitude:</label>
+                <input type="text" id="longitude" name="longitude" required>
+                <button type="button" onclick="getCurrentLocation()">Get Current Location</button>
+                <button type="submit">Update Location</button>
+            </form>
+        </section>
+        {% endif %}
     </main>
     <footer class="footer">
         <p>&copy; 2024 HarvestEdge. All rights reserved.</p>
@@ -65,5 +80,75 @@
         {% endwith %}
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                document.getElementById("location-error").innerHTML = "Geolocation is not supported by this browser.";
+            }
+        }
+
+        function showPosition(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+            document.getElementById("latitude").value = latitude;
+            document.getElementById("longitude").value = longitude;
+
+            // Update the location info in the navigation bar
+            var locationInfo = document.getElementById("location-info");
+            locationInfo.innerHTML = "Latitude: " + latitude + ", Longitude: " + longitude;
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    document.getElementById("location-error").innerHTML = "User denied the request for Geolocation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    document.getElementById("location-error").innerHTML = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    document.getElementById("location-error").innerHTML = "The request to get user location timed out.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    document.getElementById("location-error").innerHTML = "An unknown error occurred.";
+                    break;
+            }
+        }
+
+        function updateLocation(event) {
+            event.preventDefault();
+            var latitude = document.getElementById("latitude").value;
+            var longitude = document.getElementById("longitude").value;
+
+            fetch("/update_location", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    latitude: latitude,
+                    longitude: longitude
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Network response was not ok");
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data.message);
+                // Optionally display a success message to the user
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error("There was a problem with the fetch operation:", error);
+                // Optionally display an error message to the user
+                alert("There was an error updating your location. Please try again.");
+            });
+        }
+    </script>
 </body>
 </html>

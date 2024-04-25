@@ -1,3 +1,5 @@
+# user.py
+
 class User:
     def __init__(self, id, username, password, is_active=True):
         self.id = id
